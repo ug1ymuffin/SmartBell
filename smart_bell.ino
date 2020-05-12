@@ -7,7 +7,8 @@
 //standart position in schedule: hhmml; h - hours, m - minutes, l - lenth of the bell ring;
 int standartSchedule[18];//arr about work days(using at workdays)
 int currentSchedule[18];//current schedule(using at workdays and Saturdays(filled with suitable positions))
-int saturdaySchedule[3];//arr about saturday's lessons(using in satMode to fill currentSchedule)
+int rawSaturdaySchedule[4];//arr about saturday's lessons(using in satMode to fill currentSchedule). No ring time
+iny saturdaySchedule[18];//arr with timed saturday's rings.
 int sortCount; //count variable for sorting
 bool setupBlu = false; //Schedule is set - true, else - false
 int i, k, j;
@@ -38,10 +39,11 @@ void loop()
     //If midnight, count for rings will be zero
     if((Clock.getHour(h12, PM) == 0) and (Clock.getMinute() <= 5)){
       bzzCount = 0;
+      memcpy(standartSchedule, currentSchedule, 18);
     }
     //Check if Dow is saturday and schedule isn't set up for saturday
     if (Clock.getDoW() == 6 and satSetup == false) {
-      int a = satMode();
+      satMode();
     }
     //Main part of the bell
       //Check if current hour is equal to current ring hour and if it workday. If yes, setting wait period to shorter
@@ -51,10 +53,12 @@ void loop()
           //Check if current time(hhmm) equal to current bell ring time. If yes, starting BZZZ.
           if (currentSchedule[bzzCount] % 1000)/10 == Clock.getMinute()) {
             bzzz_mode(currentSchedule[bzzCount]);
+            //Reset wait time to longest value
+            lesson_check_period = 1000*60*5
           }
-          lesson_check_period = (long)1000 * 10;
+          lesson_check_period = 1000 * 10;
         }
-        lesson_check_period = (long)1000 * 60;
+        lesson_check_period = 1000 * 60;
       }
   }
 
@@ -133,7 +137,7 @@ void scheduleRead() {
 
 //Sat mode in progress
 
-void satMode() {
+void saturdayScheduleMaker() {
   int countSat;
   int currTime = saturdaySchedule[1];
   scheduleReset();
@@ -148,7 +152,8 @@ void satMode() {
       currentSchedule[i] = currTime*10;
     }
   }
-}
+  setupBlu = true;
+  }
 void scheduleReset(){
   for(int i = 0; i < 18; i++){
     currentSchedule[i] = 0
