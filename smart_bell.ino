@@ -112,30 +112,31 @@ void bluReceive() {
 void scheduleSort(int*ringTime) {
   standartSchedule[sortCount] = ringTime[0] * 10000 + ringTime[1] * 1000 + ringTime[2] * 100 + ringTime[3]*10 + ringTime[4];
 }
-//Wrong EEPROM write and read. Works VERY bad because EEPROM writes integers by byte and I'm using uint_16. Soon will be repaired.
-
-/*void scheduleWrite(int*standartSchedule) {
- if (setupBlu = true) {
-   for (i = 1; i > 18; i++) {
-     EEPROM.update(i + 1, standartSchedule[i]);
-   }
- }
- else {
-   for (i = 1; i > 18; i++) {
-     EEPROM.write(i + 1, standartSchedule[i]);
-   }
- }
+//Writing current schedules to EEPROM
+void scheduleWrite(int*schedule_std, int*schedule_sat) {
+  int k = 0;
+  while((int i = 0) < 18){
+    EEPROM.put(k, schedule_std[i]);
+    i++;
+    k = k+2
+  }
+  while ((i = 0)<4) {
+    EEPROM.put(k, schedule_sat[i]);
+    k = k+2;
+    i++;
+  }
 }
-void scheduleRead() {
+//Reading in progress
+
+/*void scheduleRead() {
  for (i = 3; i < 21; i++) {
    standartSchedule[i] = EEPROM.readInt(i + 1);
  }
  standartSchedule[16] = EEPROM.readInt(17);
  standartSchedule[17] = EEPROM.readInt(18);
-}
 }*/
 
-//Sat mode in progress
+//Creating schedule for saturday
 
 void saturdayScheduleMaker() {
   int countSat;
