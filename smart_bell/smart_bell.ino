@@ -8,7 +8,7 @@
 int standartSchedule[18];//arr about work days(using at workdays)
 int currentSchedule[18];//current schedule(using at workdays and Saturdays(filled with suitable positions))
 int rawSaturdaySchedule[4];//arr about saturday's lessons(using in satMode to fill currentSchedule). No ring time
-iny saturdaySchedule[18];//arr with timed saturday's rings.
+int saturdaySchedule[18];//arr with timed saturday's rings.
 int sortCount; //count variable for sorting
 bool setupBlu = false; //Schedule is set - true, else - false
 int i, k, j;
@@ -128,13 +128,13 @@ void scheduleWrite(int*schedule_std, int*schedule_sat) {
 }
 //Reading in progress
 
-/*void scheduleRead() {
- for (i = 3; i < 21; i++) {
-   standartSchedule[i] = EEPROM.readInt(i + 1);
- }
+void scheduleRead() {
+  while () {
+    /* code */
+  }
  standartSchedule[16] = EEPROM.readInt(17);
  standartSchedule[17] = EEPROM.readInt(18);
-}*/
+}
 
 //Creating schedule for saturday
 
