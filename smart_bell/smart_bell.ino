@@ -24,6 +24,8 @@ SoftwareSerial BTserial(2, 3); // Blutooth module pins
 DS3231 Clock;
 int button = 13;
 int LED1_PIN = 1;
+int RingRelay = 4;
+int 
 
 void setup()
 {
@@ -201,4 +203,18 @@ void button_check() {
       default: break;
     }
   }
+}
+void blinking(){
+  unsigned long local_timer = millis();
+  while(millis() - local_timer <= 50){
+    digitalWrite(LED1_PIN, HIGH);
+  }
+  digitalWrite(LED1_PIN, LOW);
+}
+void bzzz_mode(int lenght){
+  unsigned long local_timer = millis();
+  while(millis()- local_timer <= 1000 + 4000*lenght){
+    digitalWrite(RingRelay, HIGH);
+  }
+  digitalWrite(RingRelay, LOW);
 }
