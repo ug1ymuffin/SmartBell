@@ -223,7 +223,10 @@ void bzzz_mode(int lenght){
   digitalWrite(RingRelay, LOW);
 }
 void display_digits(int now_hours, int now_mins, int closest_ring){
+<<<<<<< HEAD
   /*Maybe some day it will become more beautiful*/
+=======
+>>>>>>> 402be0d2bf947582c287479c0c8a37df90dd3e63
   lc.setDigit(0, 0, now_hours/10, false);
   lc.setDigit(0, 1, now_hours%10, false);
   lc.setDigit(0, 2, now_mins/10, false);
