@@ -21,11 +21,12 @@ unsigned long timer_two;
 bool h12, PM;
 
 SoftwareSerial BTserial(2, 3); // Blutooth module pins
+LedControl lc=LedControl(12,11,10,1);
 DS3231 Clock;
 int button = 13;
-int LED1_PIN = 1;
+int LED1_PIN = 7;
 int RingRelay = 4;
-int 
+int
 
 void setup()
 {
@@ -38,6 +39,9 @@ void setup()
   }
   timer_one = millis();
   timer_two = millis();
+  lc.shutdown(0,false);
+  lc.setIntensity(0,8);
+  lc.clearDisplay(0);
 }
 //Main loop. Responsible for bell rings.
 void loop()
@@ -78,7 +82,7 @@ void loop()
 
     }
   }
-
+  display_digits(Clock.getHour(), Clock.getMinute(), currentSchedule[bzzCount]);
 }
 //receiving Data. Because I had some problems with reciving more than 64 numbers, I have to use this method.
 void bluReceive() {
@@ -217,4 +221,15 @@ void bzzz_mode(int lenght){
     digitalWrite(RingRelay, HIGH);
   }
   digitalWrite(RingRelay, LOW);
+}
+void display_digits(int now_hours, int now_mins, int closest_ring){
+  /*Maybe some day it will become more beautiful*/
+  lc.setDigit(0, 0, now_hours/10, false);
+  lc.setDigit(0, 1, now_hours%10, false);
+  lc.setDigit(0, 2, now_mins/10, false);
+  lc.setDigit(0, 3, now_mins%10, false);
+  lc.setDigit(0, 4, closest_ring/1000, false);
+  lc.setDigit(0, 5, (closest_ring%1000)/100, false);
+  lc.setDigit(0, 6, ((closest_ring%1000)%100)/10, false);
+  lc.setDigit(0, 7, ((closest_ring%1000)%100)%10, false);
 }
