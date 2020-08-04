@@ -1,8 +1,8 @@
-#include <ArduinoSort.h>
 #include <EEPROM.h>
 #include <SoftwareSerial.h>
 #include <Wire.h>
 #include <DS3231.h>
+#include "LedControl.h"
 //standart position in schedule: hhmml; h - hours, m - minutes, l - lenth of the bell ring;
 int standartSchedule[18];//arr about work days(using at workdays)
 int currentSchedule[18];//current schedule(using at workdays and Saturdays(filled with suitable positions))
@@ -21,15 +21,15 @@ unsigned long timer_two;
 bool h12, PM;
 
 SoftwareSerial BTserial(2, 3); // Blutooth module pins
-LedControl lc=LedControl(12,11,10,1);
+LedControl lc=LedControl(5,3,4,1);
 DS3231 Clock;
 int button = 13;
 int LED1_PIN = 7;
 int RingRelay = 4;
-int
 
 void setup()
 {
+  EEPROM.get(255, setupBlu);
   Serial.begin(9600);
   BTserial.begin(9600);
   Wire.begin();
@@ -82,7 +82,9 @@ void loop()
 
     }
   }
-  display_digits(Clock.getHour(), Clock.getMinute(), currentSchedule[bzzCount]);
+  display_digits(Clock.getHour(h12, PM), Clock.getMinute(), currentSchedule[bzzCount]);
+  Serial.print(Clock.getHour(h12, PM));
+  Serial.println(Clock.getMinute());
 }
 //receiving Data. Because I had some problems with reciving more than 64 numbers, I have to use this method.
 void bluReceive() {
@@ -121,7 +123,7 @@ void bluReceive() {
       }
     }
     setupBlu = true;
-    //
+    EEPROM.put(255, setupBlu);
     //EEPROM.update(111, setupBlu);
     scheduleWrite(standartSchedule, saturdaySchedule);
     digitalWrite(LED1_PIN, LOW);
@@ -223,10 +225,7 @@ void bzzz_mode(int lenght){
   digitalWrite(RingRelay, LOW);
 }
 void display_digits(int now_hours, int now_mins, int closest_ring){
-<<<<<<< HEAD
   /*Maybe some day it will become more beautiful*/
-=======
->>>>>>> 402be0d2bf947582c287479c0c8a37df90dd3e63
   lc.setDigit(0, 0, now_hours/10, false);
   lc.setDigit(0, 1, now_hours%10, false);
   lc.setDigit(0, 2, now_mins/10, false);
@@ -235,4 +234,12 @@ void display_digits(int now_hours, int now_mins, int closest_ring){
   lc.setDigit(0, 5, (closest_ring%1000)/100, false);
   lc.setDigit(0, 6, ((closest_ring%1000)%100)/10, false);
   lc.setDigit(0, 7, ((closest_ring%1000)%100)%10, false);
+  delay(500);
+  lc.clearDisplay(0);
+}
+void hard_reset(){
+  scheduleReset();
+  for(int i = 0; i < 44; i++){
+    EEPROM.put(i, 0);
+  }
 }
