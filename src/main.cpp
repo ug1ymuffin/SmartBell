@@ -7,10 +7,13 @@
 //data about schedule and alarms
 int Schedule[7][20][3];//arr about work days(using at workdays). Format of every elem: [[hour, minute, lenth], ... [hour, minute, lenth],]
 int currentAlarm[3];
+int green_pos = LOW;
+int red_pos = LOW;
 
 //timers
 unsigned long lesson_check_period = (long)1000 * 60 * 5; //Ringing waiting period lenght
 unsigned long btn_check_period = (long) 1000 * 5; //Wait period for button and Blutooth
+unsigned long led_blink_and_button_check_interval = (long) 50 //Led Bli
 
 //values for devices
 
@@ -25,8 +28,8 @@ LedControl lc=LedControl(12,11,10,1);
 int button = 13;
 
 //LEDs
-int LED1 = 7;
-int LED2
+int LED_GREEN = 7;
+int LED2_RED = 6;
 
 //relay
 int RingRelay = 4;
@@ -94,23 +97,24 @@ void scheduleRead() {
   while (i < 18) {
     EEPROM.get(k, standartSchedule[i]);
     i++;
-    k = k + 2;
+    k = k + 1;
   }
 }
-//Needs some repair
+
 void button_check() {
   bool first_pos, second_pos;
   unsigned long local_timer = millis();
+  int btn_time = 0; //Time when button was pushed
   first_pos = digitalRead(button);
-  while (millis() - local_timer < 100 ) {
-    second_pos = digitalRead(button);
+  while(second_pos == HIGH){
+    if(millis() - local_timer >= led_blink_and_button_check_interval){
+         second_pos = digitalRead(button);
+          green_pos = blinking(GREEN_LED, green_pos);
+      
+    }
   }
-  if ((first_pos == second_pos) and (first_pos == 1)) {
-    button_time += 5;
-    blinking();
-  }
-  else {
-    switch (button_time) {
+  if((second_pos == first_pos) and (fisrt_pos == HIGH){
+    switch (btn_time) {
       case 5 :  bzzz_mode(0); break;
       case 10: bzzz_mode(1); break;
       case 15: setupBlu = false; break;
@@ -119,12 +123,9 @@ void button_check() {
     }
   }
 }
-void blinking(){
-  unsigned long local_timer = millis();
-  while(millis() - local_timer <= 50){
-    digitalWrite(LED1_PIN, HIGH);
-  }
-  digitalWrite(LED1_PIN, LOW);
+bool blinking(LED, pos){
+  digitalWrite(LED, !pos);
+  pos = !pos;
 }
 void bzzz_mode(int lenght){
   unsigned long local_timer = millis();
