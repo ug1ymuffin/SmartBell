@@ -1,6 +1,8 @@
 #include <EEPROM.h>
 #include <SoftwareSerial.h>
 #include <Wire.h>
+#include <DigitLedDisplay.h>
+#include <RTClib.h>
 #include <Arduino.h>
 //values for program
 
@@ -9,11 +11,24 @@ int Schedule[7][20][3];//arr about work days(using at workdays). Format of every
 int currentAlarm[3];
 int green_pos = LOW;
 int red_pos = LOW;
+int bzzCount = 0;
 
 //timers
-unsigned long lesson_check_period = (long)1000 * 60 * 5; //Ringing waiting period lenght
+unsigned long lesson_check_period_std = (long)1000 * 60 * 5; //Ringing waiting period lenght
 unsigned long btn_check_period = (long) 1000 * 5; //Wait period for button and Blutooth
-unsigned long led_blink_and_button_check_interval = (long) 50 //Led Bli
+unsigned long led_blink_and_button_check_interval = (long) 50; //Led Blinking interval
+unsigned long timer_one = millis();
+unsigned long timer_two = millis();
+
+//Functions used in program
+void scheduleRead();
+void scheduleSort();
+void button_check();
+bool blinking(int LED, int pos);
+void bzzz_mode(int lenght);
+void display_digits(int now_hours, int now_minutes, int closest_ring_hours, int closest_ring_minutes);
+void hard_reset();
+
 
 //values for devices
 
@@ -22,7 +37,7 @@ RTC_DS3231 rtc;
 char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 
 //display
-LedControl lc=LedControl(12,11,10,1);
+DigitLedDisplay ld = DigitLedDisplay(7, 5, 6);
 
 //button
 int button = 13;
@@ -39,12 +54,7 @@ void setup()
   Serial.begin(9600);
   Wire.begin();
   scheduleRead();
-  timer_one = millis();
-  timer_two = millis();
   // Rewriting again
-  lc.shutdown(0,false);
-  lc.setIntensity(0,8);
-  lc.clearDisplay(0);
 }
 //Main loop. Responsible for bell rings.
 void loop()
@@ -92,7 +102,7 @@ void scheduleSort(int*ringTime) {
   standartSchedule[sortCount] = ringTime[0] * 10000 + ringTime[1] * 1000 + ringTime[2] * 100 + ringTime[3] * 10 + ringTime[4];
 }
 // Probblems!!! Wrong reading
-void scheduleRead() {
+void scheduleRead(){
   int k, i = 0;
   while (i < 18) {
     EEPROM.get(k, standartSchedule[i]);
@@ -123,7 +133,7 @@ void button_check() {
     }
   }
 }
-bool blinking(LED, pos){
+bool blinking(int LED, bool pos){
   digitalWrite(LED, !pos);
   pos = !pos;
 }
@@ -136,15 +146,7 @@ void bzzz_mode(int lenght){
 }
 void display_digits(int now_hours, int now_mins, int closest_ring_hours, int closest_ring_minutes){
   /*Maybe some day it will become more beautiful*/
-  unsigned long local_timer = millis()
-  lc.setDigit(0, 0, now_hours/10, false);
-  lc.setDigit(0, 1, now_hours%10, false);
-  lc.setDigit(0, 2, now_mins/10, false);
-  lc.setDigit(0, 3, now_mins%10, false);
-  lc.setDigit(0, 4, closest_ring/1000, false);
-  lc.setDigit(0, 5, (closest_ring%1000)/100, false);
-  lc.setDigit(0, 6, ((closest_ring%1000)%100)/10, false);
-  lc.setDigit(0, 7, ((closest_ring%1000)%100)%10, false);
+
 }
 void hard_reset(){
   scheduleReset();
