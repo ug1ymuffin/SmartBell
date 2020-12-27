@@ -7,14 +7,12 @@
 //values for program
 
 //data about schedule and alarms
-int Schedule[7][20][3];//arr about work days(using at workdays). Format of every elem: [[hour, minute, lenth], ... [hour, minute, lenth],]
-int currentAlarm[3];
-int green_pos = LOW;
-int red_pos = LOW;
+int Schedule[7][20][3];//arr about work days(using at workdays). Format of every elem: [[hour, minute, length], ... [hour, minute, lenth],]
 int bzzCount = 0;
 
 //timers
 unsigned long lesson_check_period_std = (long)1000 * 60 * 5; //Ringing waiting period lenght
+unsigned long lesson_check_period = lesson_check_period_std;
 unsigned long btn_check_period = (long) 1000 * 5; //Wait period for button and Blutooth
 unsigned long led_blink_and_button_check_interval = (long) 50; //Led Blinking interval
 unsigned long timer_one = millis();
@@ -24,10 +22,11 @@ unsigned long timer_two = millis();
 void scheduleRead();
 void scheduleSort();
 void button_check();
-bool blinking(int LED, int pos);
-void bzzz_mode(int lenght);
+bool blinking(int LED, bool pos);
+void bzzz_mode(unsigned long lenght);
 void display_digits(int now_hours, int now_minutes, int closest_ring_hours, int closest_ring_minutes);
 void hard_reset();
+
 
 
 //values for devices
@@ -44,7 +43,9 @@ int button = 13;
 
 //LEDs
 int LED_GREEN = 7;
-int LED2_RED = 6;
+bool green_pos = LOW;
+int LED_RED = 6;
+bool red_pos = LOW;
 
 //relay
 int RingRelay = 4;
@@ -54,63 +55,54 @@ void setup()
   Serial.begin(9600);
   Wire.begin();
   scheduleRead();
+  ld.setBright(7);
+  ld.setDigitLimit(8);
   // Rewriting again
 }
 //Main loop. Responsible for bell rings.
 void loop()
 {
+  DateTime now = rtc.now();
   //Whole main loop is full of errors, because new library
   //Some functions be like afsgshth wareehtr
   //Wait for lesson_check_period
+  int cur_alarm_hour;
+  int cur_alarm_minute;
+  unsigned long cur_alarm_legth;
   if (millis() - timer_one >= lesson_check_period) {
-    //If midnight, count for rings will be zero
-    if ((Clock.getHour(h12, PM) == 0) and (Clock.getMinute() <= 10)) {
-      bzzCount = 0;
-    }
-    //Main part of the bell
-    //Check if current hour is equal to current ring hour and if it workday. If yes, setting wait period to shorter
-    if (Clock.getHour(h12, PM) == (currentSchedule[bzzCount]) / 1000 and Clock.getDoW() != 7) {
-      //Check if less than 5 minutes until next bell ring. If yes, setting wait period to shorter
-      if ((currentSchedule[bzzCount] % 1000) / 10 - Clock.getMinute() <= 5) {
-        //Check if current time(hhmm) equal to current bell ring time. If yes, starting BZZZ.
-        if ((currentSchedule[bzzCount] % 1000) / 10 == Clock.getMinute()) {
-          bzzz_mode(currentSchedule[bzzCount]);
-          //Reset wait time to longest value
-          lesson_check_period = (long) 1000 * 60 * 5;
-        }
-        lesson_check_period = (long) 1000 * 10;
+    cur_alarm_hour = Schedule[now.dayOfTheWeek()][bzzCount][1];
+    cur_alarm_minute = Schedule[now.dayOfTheWeek()][bzzCount][2];
+    cur_alarm_legth = Schedule[now.dayOfTheWeek()][bzzCount][3];
+    if(now.hour() == cur_alarm_hour){
+      lesson_check_period = 1000 * 5;
+      if(now.minute() == cur_alarm_minute){
+        bzzz_mode(cur_alarm_legth);
+        bzzCount++;
       }
-      lesson_check_period = (long) 1000 * 60;
     }
   }
   if (millis() - timer_two >= btn_check_period) {
     button_check();
-
-    }
   }
-  while (millis() - timer_three >= 100) {
-
-  }
-  display_digits(Clock.getHour(h12, PM), Clock.getMinute(), currentSchedule[bzzCount]);
-  Serial.print(Clock.getHour(h12, PM));
-  Serial.println(Clock.getMinute());
+  display_digits(now.hour(), now.minute(), cur_alarm_hour, cur_alarm_minute);
 }
 
 //Looks strange
-//Collecting array of time pieces into one integer
-void scheduleSort(int*ringTime) {
-  standartSchedule[sortCount] = ringTime[0] * 10000 + ringTime[1] * 1000 + ringTime[2] * 100 + ringTime[3] * 10 + ringTime[4];
-}
 // Probblems!!! Wrong reading
 void scheduleRead(){
-  int k, i = 0;
-  while (i < 18) {
-    EEPROM.get(k, standartSchedule[i]);
-    i++;
-    k = k + 1;
+  int data;
+  int l;
+  for(int i = 0; i <7; i++){
+    for(int j = 0; j < 20; j++){
+      data = EEPROM[l];
+      Schedule[i][j][0] = (data/10000)*10 + (data/1000)%10;
+      Schedule[i][j][1] = ((data/100)%10)*10 + (data/10)%10;
+      Schedule[i][j][2] = data%10;
+      l++;
+    }
   }
 }
-
+  
 void button_check() {
   bool first_pos, second_pos;
   unsigned long local_timer = millis();
@@ -118,17 +110,16 @@ void button_check() {
   first_pos = digitalRead(button);
   while(second_pos == HIGH){
     if(millis() - local_timer >= led_blink_and_button_check_interval){
-         second_pos = digitalRead(button);
-          green_pos = blinking(GREEN_LED, green_pos);
-      
+      second_pos = digitalRead(button);
+      green_pos = blinking(LED_GREEN, green_pos);
+      btn_time++;
     }
   }
-  if((second_pos == first_pos) and (fisrt_pos == HIGH){
+  if((second_pos == first_pos) and (first_pos == HIGH)){
     switch (btn_time) {
-      case 5 :  bzzz_mode(0); break;
-      case 10: bzzz_mode(1); break;
-      case 15: setupBlu = false; break;
-      case 30: hard_reset(); break;
+      case 1 :  bzzz_mode(0); break;
+      case 2: bzzz_mode(1); break;
+      case 6: hard_reset(); break;
       default: break;
     }
   }
@@ -136,21 +127,36 @@ void button_check() {
 bool blinking(int LED, bool pos){
   digitalWrite(LED, !pos);
   pos = !pos;
+  return pos;
 }
-void bzzz_mode(int lenght){
+void bzzz_mode(unsigned long lenght){
+
   unsigned long local_timer = millis();
   while(millis()- local_timer <= 1000 + 4000*lenght){
     digitalWrite(RingRelay, HIGH);
   }
   digitalWrite(RingRelay, LOW);
 }
+//Needs rewrite, because new library. 
 void display_digits(int now_hours, int now_mins, int closest_ring_hours, int closest_ring_minutes){
-  /*Maybe some day it will become more beautiful*/
-
+  ld.write(now_hours/10, 1);
+  ld.write(now_hours%10, 2);
+  ld.write(now_mins/10, 3);
+  ld.write(now_mins%10, 4);
+  ld.write(closest_ring_hours/10, 5);
+  ld.write(closest_ring_hours%10, 6);
+  ld.write(closest_ring_minutes/10, 7);
+  ld.write(closest_ring_minutes%10, 8);
+  ld.clear();
 }
 void hard_reset(){
-  scheduleReset();
   for(int i = 0; i < 256; i++){
     EEPROM.put(i, 0);
+  }
+  for(int i = 1; i <7; i++){
+    for(int j = 1; j < 20; j++){
+      for(int k = 1; k < 3; k++)
+      Schedule[i][j][k] = 0;
+    }
   }
 }
