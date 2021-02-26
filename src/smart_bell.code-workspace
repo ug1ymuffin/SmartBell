@@ -1,0 +1,15 @@
+{
+    "folders": [
+        {
+            "name": "SmartBELL",
+            "path": ".."
+        },
+        {
+            "name": "Tests and congigs",
+            "path": "../../../../Documents/PlatformIO/Projects/Tests and congigs"
+        }
+    ],
+    "settings": {
+        "git.ignoreLimitWarning": true
+    }
+}
