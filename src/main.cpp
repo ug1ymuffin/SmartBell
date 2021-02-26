@@ -113,6 +113,14 @@ void button_check() {
       second_pos = digitalRead(button);
       green_pos = blinking(LED_GREEN, green_pos);
       btn_time++;
+<<<<<<< Updated upstream
+=======
+      if (btn_time > 15)
+      {
+        btn_time = 0;
+      }
+      display_button_push(btn_time);
+>>>>>>> Stashed changes
     }
   }
   if((second_pos == first_pos) and (first_pos == HIGH)){
@@ -149,9 +157,40 @@ void display_digits(int now_hours, int now_mins, int closest_ring_hours, int clo
   ld.write(closest_ring_minutes%10, 8);
   ld.clear();
 }
+<<<<<<< Updated upstream
 void hard_reset(){
   for(int i = 0; i < 256; i++){
     EEPROM.put(i, 0);
+=======
+
+void sorting_schedule()
+{
+  int p = 0;
+  int data;
+
+  for (int i = 0; i < 7; i++)
+  {
+    if (received_data[p] == 222)
+    {
+      p++;
+      continue;
+    }
+    for (int j = 0; j < 20; j++)
+    {
+      if (received_data[p] == 111)
+      {
+        p++;
+        break;
+      }
+      for (int k = 0; k < 4; k++)
+      {
+        Schedule[i][j][k] = received_data[p];
+        p++;
+        Serial.print(Schedule[i][j][k]);
+      }
+      Serial.println();
+    }
+>>>>>>> Stashed changes
   }
   for(int i = 1; i <7; i++){
     for(int j = 1; j < 20; j++){
@@ -159,4 +198,21 @@ void hard_reset(){
       Schedule[i][j][k] = 0;
     }
   }
+<<<<<<< Updated upstream
+=======
+}
+
+void time_adjustment(h, m, s)
+{
+  DateTime now = rtc.now();
+  rtc.adjust(DateTime(now.year(), now.month(), now.day(), h, m, s));
+  return (now.day() * 1000000 + now.month() * 10000 + now.year());
+}
+
+int up_time(y, m, d)
+{
+  DateTime now = rtc.now();
+  ut = (now.year() - y) * 365 + (now.month() - m) * 30 + (now.day() - d);
+  return ut;
+>>>>>>> Stashed changes
 }
