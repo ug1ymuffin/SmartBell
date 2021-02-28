@@ -1,4 +1,4 @@
-.gitignore
+
 ./vscode
 smart_bell.code-workspace
 .clang_complete
