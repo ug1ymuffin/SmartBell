@@ -1,3 +1,4 @@
-.pio
+/.vscode
+smart_bell.code-workspace
 .clang_complete
 .gcc-flags.json
