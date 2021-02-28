@@ -9,7 +9,6 @@
 //data about schedule and alarms
 uint8_t bzz_count;
 int Schedule[7][20][4]; //arr about work days(using at workdays). Format of every elem: [[hour, minute, length, amount], ... [hour, minute, lenth, amount]]
-int received_data[560];
 int display_ring_help_var = 0;
 int btn_time = 0; //Time when button was pushed
 bool button_pressed = false;
@@ -17,29 +16,26 @@ bool first_pos, second_pos;
 bool ring_pos = LOW;
 bool ring_idle = true;
 bool button_locked = true;
-bool boolSet;
 int bzzz_amount = 0;
 
 //timers
-unsigned long bzz_check_period_std = (long)1000 * 60 * 5; //Ringing waiting period lenght
+unsigned long bzz_check_period_std = (long)100; //Ringing waiting period lenght
 unsigned long bzz_check_period = bzz_check_period_std;
-unsigned long btn_check_period = (long)1000; //Wait period for button and Blutooth
-unsigned long display_update = (long)1000 * 1;
-unsigned long display_blink_period = (long)100;
-unsigned long button_check_interval = (long)1000;
-unsigned long led_blink_interval = (long)100;
+int btn_check_period = 1000; //Wait period for button and Blutooth
+unsigned long display_update = 1000;
+unsigned long display_blink_period = 100;
+unsigned long button_check_interval = 1000;
+unsigned long led_blink_interval = 100;
 unsigned long timer_one = millis();
 unsigned long button_check_timer = millis();
 unsigned long timer_three = millis();
 unsigned long timer_display_blink_timer = millis();
-unsigned long blink_timer_one = millis();
-unsigned long blink_timer_two = millis();
+unsigned long blink_timer = millis();
 unsigned long ring_timer = millis();
 unsigned long bzzz_lenght = 0;
 
 //Functions used in program
 void scheduleRead();
-void scheduleSort();
 void schedule_serial_input();
 void button_check();
 bool blinking(int LED, bool led_pos, unsigned long *blinking_timer);
@@ -76,7 +72,7 @@ int ring_relay = 4;
 
 void setup()
 {
-  EEPROM.get(0, bzz_count);
+  bzz_count = 0;
   Serial.begin(9600);
   btSerial.begin(9600);
   Serial.setTimeout(10000);
@@ -89,7 +85,6 @@ void setup()
   pinMode(ring_relay, OUTPUT);
   pinMode(LED_GREEN, OUTPUT);
   pinMode(LED_RED, OUTPUT);
-
   // Rewriting again
 }
 //Main loop. Responsible for bell rings.
@@ -99,17 +94,19 @@ void loop()
   //Whole main loop is full of errors, because new library
   //Some functions be like afsgshth wareehtr
   //Wait for lesson_check_period
-  int cur_alarm_hour = Schedule[now.dayOfTheWeek() - 1][bzz_count][0];
-  int cur_alarm_minute = Schedule[now.dayOfTheWeek() - 1][bzz_count][1];
-  if (millis() - timer_one <= bzz_check_period)
+  int cur_alarm_hour = Schedule[(now.dayOfTheWeek() + 6) % 7][bzz_count][0];
+  int cur_alarm_minute = Schedule[(now.dayOfTheWeek() + 6) % 7][bzz_count][1];
+  if (millis() - timer_one >= bzz_check_period)
   {
     if (now.hour() == cur_alarm_hour)
     {
-      bzz_check_period = 1000 * 5;
+      bzz_check_period = 1000;
       if (now.minute() == cur_alarm_minute)
       {
-        bzzz_amount = (int)Schedule[3];
-        bzzz_lenght = (long)Schedule[2];
+        bzzz_amount = Schedule[(now.dayOfTheWeek() + 6) % 7][bzz_count][2] * 2;
+        bzzz_lenght = Schedule[(now.dayOfTheWeek() + 6) % 7][bzz_count][3];
+        Serial.print(bzzz_amount);
+        Serial.print(bzzz_lenght);
         ring_idle = false;
         bzz_count++;
         EEPROM.put(0, bzz_count);
@@ -119,15 +116,19 @@ void loop()
   }
   button_check();
   bzzz_mode();
-  led_green_pos = blinking(LED_GREEN, led_green_pos, &blink_timer_one);
   if (button_pressed)
   {
-    led_red_pos = blinking(LED_RED, led_red_pos, &blink_timer_two);
+    led_red_pos = blinking(LED_RED, led_red_pos, &blink_timer);
   }
-  if (millis() - timer_three >= display_update and !button_pressed and ring_idle)
+  else
+  {
+    led_green_pos = blinking(LED_GREEN, led_green_pos, &blink_timer);
+  }
+  if ((millis() - timer_three >= display_update) and !button_pressed and ring_idle)
   {
     display_digits(now.hour(), now.minute(), cur_alarm_hour, cur_alarm_minute);
     timer_three = millis();
+    Serial.print(1);
   }
 }
 
@@ -161,10 +162,11 @@ void scheduleRead()
 
 void button_check()
 {
-  if (millis() - button_check_timer > button_check_interval and !button_locked)
+  if ((millis() - button_check_timer > button_check_interval))
   {
-    second_pos = digitalRead(button);
-    if ((first_pos = HIGH) and (second_pos == HIGH))
+    button_check_timer = millis();
+    first_pos = digitalRead(button);
+    if (second_pos == true and first_pos == true)
     {
       button_pressed = true;
       btn_time++;
@@ -176,44 +178,35 @@ void button_check()
     }
     else
     {
-      switch (btn_time)
+      if (button_pressed)
       {
-      case 1:
-        ring_idle = false;
-        bzzz_lenght = 1;
-        bzzz_amount = 2;
-        break;
-      case 2:
-        ring_idle = false;
-        bzzz_amount = 4;
-        bzzz_lenght = 2;
-        break;
-      case 3:
-        schedule_serial_input();
-        break;
-      case 5:
-        break;
-      case 6:
-        hard_reset();
-        break;
-      case 7:
+        switch (btn_time)
+        {
+        default:
+          break;
+        case 1:
+          ring_idle = false;
+          bzzz_lenght = 1;
+          bzzz_amount = 2;
+          break;
 
-        break;
-      case 8:
-      default:
-        break;
+        case 2:
+          ring_idle = false;
+          bzzz_amount = 4;
+          bzzz_lenght = 2;
+          break;
+        case 4:
+          bluetooth_translating();
+          break;
+        }
+        digitalWrite(LED_RED, LOW);
+        led_red_pos = LOW;
       }
       btn_time = 0;
       button_pressed = false;
-      digitalWrite(LED_RED, LOW);
-      led_red_pos = LOW;
     }
-    button_check_timer = millis();
   }
-  else
-  {
-    first_pos = digitalRead(button);
-  }
+  second_pos = first_pos;
 }
 
 bool blinking(int LED, bool led_pos, unsigned long *blink_timer)
@@ -247,7 +240,6 @@ void bzzz_mode()
   {
     button_locked = false;
     ring_idle = true;
-    timer_three = display_blink_period;
   }
 }
 
@@ -328,11 +320,6 @@ void schedule_serial_input()
           }
           break;
         }
-        else if (confirm_data == 2)
-        {
-          scheduleRead();
-          return 1;
-        }
         else
         {
           Serial.println("Succeed " + String(data));
@@ -352,84 +339,79 @@ void schedule_serial_input()
 
 void sorting_schedule()
 {
-  int p = 0;
-  int data;
-  
-  for (int i = 0; i < 7; i++)
-  {
-    if (received_data[p] == 222)
-    {
-      p++;
-      continue;
-    }
-    for (int j = 0; j < 20; j++)
-    {
-      if (received_data[p] == 111)
-      {
-        p++;
-        break;
-      }
-      for (int k = 0; k < 4; k++)
-      {
-        Schedule[i][j][k] = received_data[p];
-        p++;
-        Serial.print(Schedule[i][j][k]);
-      }
-      Serial.println();
-    }
-  }
 }
 void bluetooth_translating()
 {
-  unsigned long local_timer = millis();
-  int v = 0;
-  int hours, minutes, seconds;
-  while (millis() - local_timer <= 1000 * 60)
+  int data = 0;
+  int i = 0;
+  int j = 0;
+  int k = 0;
+  DateTime now = rtc.now();
+  while (i < 7)
   {
+    animation();
+    blinking(LED_RED, led_red_pos, &blink_timer);
     if (btSerial.available())
     {
-      animation();
-      blinking(LED_GREEN, led_green_pos, &blink_timer_one);
-      blinking(LED_RED, led_red_pos, &blink_timer_two);
       data = btSerial.read();
-      if (data > 0)
+      if (data != 0)
       {
-        received_data[v] = data;
-        Serial.println(received_data[v]);
-        if (received_data[v] == 222 or received_data[v] == 111)
+        switch (data - 1)
         {
-          boolSet++;
-          if (boolSet >= 7)
-          {
-            sorting_schedule();
-          }
+        case 111:
+          k++;
+          break;
+        case 222:
+          Serial.print(Schedule[i][j][0]);
+          Serial.print(Schedule[i][j][1]);
+          Serial.print(Schedule[i][j][2]);
+          Serial.print(Schedule[i][j][3]);
+          Serial.println();
+          j++;
+          k = 0;
+          break;
+        case 33:
+          i++;
+          j = 0;
+          k = 0;
+          break;
+        default:
+          Schedule[i][j][k] = data - 1;
         }
       }
-      if (data == 84)
-      {
-        for (int i = 0; i < 0; i++)
-        {
-          hours = btSerial.read();
-          minutes = btSerial.read();
-          seconds = btSerial.read();
-        }
-        //time_adjustment(hours, minutes, seconds);
-      }
-      v++;
     }
   }
-}
+  // int arr_len = 20;
+  // int l = 0;
+  // int r = arr_len;
+  // while (l <= r)
+  // {
+  //   int m = l + (r - l) / 2;
+  //   if (Schedule[(now.dayOfTheWeek() + 6) % 7][m][0] == now.hour())
+  //   {
 
-
-void time_adjustment(h, m, s)
-{
-  DateTime now = rtc.now();
-  rtc.adjust(DateTime(now.year(), now.month(), now.day(), h, m, s));
-  return (now.day()*1000000 + now.month()*10000 + now.year());
-}
-
-int up_time(y, m, d){
-  DateTime now = rtc.now();
-  ut = (now.year() - y)*365 + (now.month()- m)*30 + (now.day() - d);
-  return ut;
+  //     if (Schedule[(now.dayOfTheWeek() + 6) % 7][m][1] > now.minute())
+  //     {
+  //       l = m + 1;
+  //     }
+  //     else
+  //     {
+  //       r = m - 1;
+  //     }
+  //   }
+  //   else if (Schedule[(now.dayOfTheWeek() + 6) % 7][m][0] > now.hour())
+  //   {
+  //     l = m + 1;
+  //   }
+  //   else if (l == r)
+  //   {
+  //     Serial.println(12);
+  //     break;
+  //   }
+  //   else
+  //   {
+  //     r = m - 1;
+  //   } 
+  // }
+  // bzz_count = l;
 }
