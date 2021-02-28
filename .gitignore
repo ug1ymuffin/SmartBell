@@ -1,5 +1,13 @@
+<<<<<<< HEAD
 
-./vscode
+/vscode
 smart_bell.code-workspace
 .clang_complete
 .gcc-flags.json
+=======
+.pio
+.vscode/.browse.c_cpp.db*
+.vscode/c_cpp_properties.json
+.vscode/launch.json
+.vscode/ipch
+>>>>>>> parent of fb75201... Returning to original Platformio structure
