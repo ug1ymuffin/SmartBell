@@ -36,6 +36,8 @@ unsigned long bzzz_lenght = 0;
 
 //Functions used in program
 void scheduleRead();
+int nearest_alarm(int d, int h, int m);
+bool schedule_write();
 void schedule_serial_input();
 void button_check();
 bool blinking(int LED, bool led_pos, unsigned long *blinking_timer);
@@ -53,7 +55,7 @@ RTC_DS3231 rtc;
 char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 
 //display
-LedControl lc = LedControl(8, 7, 9, 1);
+LedControl lc = LedControl(9, 8, 7, 1);
 
 //bluetooth
 SoftwareSerial btSerial(2, 3);
@@ -72,7 +74,8 @@ int ring_relay = 4;
 
 void setup()
 {
-  bzz_count = 0;
+  DateTime now = rtc.now();
+  bzz_count = nearest_alarm((now.dayOfTheWeek() + 6) % 7, now.hour(), now.minute());
   Serial.begin(9600);
   btSerial.begin(9600);
   Serial.setTimeout(10000);
@@ -94,26 +97,24 @@ void loop()
   //Whole main loop is full of errors, because new library
   //Some functions be like afsgshth wareehtr
   //Wait for lesson_check_period
+
   int cur_alarm_hour = Schedule[(now.dayOfTheWeek() + 6) % 7][bzz_count][0];
   int cur_alarm_minute = Schedule[(now.dayOfTheWeek() + 6) % 7][bzz_count][1];
-  if (millis() - timer_one >= bzz_check_period)
+  if (now.hour() == cur_alarm_hour)
   {
-    if (now.hour() == cur_alarm_hour)
+    bzz_check_period = 1000;
+    if (now.minute() == cur_alarm_minute)
     {
-      bzz_check_period = 1000;
-      if (now.minute() == cur_alarm_minute)
-      {
-        bzzz_amount = Schedule[(now.dayOfTheWeek() + 6) % 7][bzz_count][2] * 2;
-        bzzz_lenght = Schedule[(now.dayOfTheWeek() + 6) % 7][bzz_count][3];
-        Serial.print(bzzz_amount);
-        Serial.print(bzzz_lenght);
-        ring_idle = false;
-        bzz_count++;
-        EEPROM.put(0, bzz_count);
-        bzz_check_period = bzz_check_period_std;
-      }
+      bzzz_amount = Schedule[(now.dayOfTheWeek() + 6) % 7][bzz_count][2] * 2;
+      bzzz_lenght = Schedule[(now.dayOfTheWeek() + 6) % 7][bzz_count][3];
+      Serial.print(bzzz_amount);
+      Serial.print(bzzz_lenght);
+      ring_idle = false;
+      EEPROM.put(0, bzz_count);
+      bzz_check_period = bzz_check_period_std;
     }
   }
+
   button_check();
   bzzz_mode();
   if (button_pressed)
@@ -126,10 +127,11 @@ void loop()
   }
   if ((millis() - timer_three >= display_update) and !button_pressed and ring_idle)
   {
+
     display_digits(now.hour(), now.minute(), cur_alarm_hour, cur_alarm_minute);
     timer_three = millis();
-    Serial.print(1);
   }
+  bzz_count = nearest_alarm((now.dayOfTheWeek() + 6) % 7, now.hour(), now.minute());
 }
 
 void scheduleRead()
@@ -197,6 +199,10 @@ void button_check()
           break;
         case 4:
           bluetooth_translating();
+          break;
+        case 6:
+          hard_reset();
+          scheduleRead();
           break;
         }
         digitalWrite(LED_RED, LOW);
@@ -279,16 +285,19 @@ void animation()
 
 void hard_reset()
 {
-  for (int i = 0; i < 256; i++)
+  unsigned long data;
+  int l = 1;
+  for (int i = 0; i < 7; i++)
   {
-    EEPROM.put(i, 0);
-  }
-  for (int i = 1; i < 7; i++)
-  {
-    for (int j = 1; j < 20; j++)
+    for (int j = 0; j < 20; j++)
     {
-      for (int k = 1; k < 3; k++)
-        Schedule[i][j][k] = 0;
+      data = 0;
+      EEPROM.put(l, data);
+      if (data != 0)
+      {
+        Serial.println(data);
+      }
+      l += 4;
     }
   }
 }
@@ -337,16 +346,13 @@ void schedule_serial_input()
   scheduleRead();
 }
 
-void sorting_schedule()
-{
-}
 void bluetooth_translating()
 {
   int data = 0;
+  bzz_count = 0;
   int i = 0;
   int j = 0;
   int k = 0;
-  DateTime now = rtc.now();
   while (i < 7)
   {
     animation();
@@ -381,37 +387,38 @@ void bluetooth_translating()
       }
     }
   }
-  // int arr_len = 20;
-  // int l = 0;
-  // int r = arr_len;
-  // while (l <= r)
-  // {
-  //   int m = l + (r - l) / 2;
-  //   if (Schedule[(now.dayOfTheWeek() + 6) % 7][m][0] == now.hour())
-  //   {
+  schedule_write();
+}
+int nearest_alarm(int d, int h, int m)
+{
+  int na = 20;
 
-  //     if (Schedule[(now.dayOfTheWeek() + 6) % 7][m][1] > now.minute())
-  //     {
-  //       l = m + 1;
-  //     }
-  //     else
-  //     {
-  //       r = m - 1;
-  //     }
-  //   }
-  //   else if (Schedule[(now.dayOfTheWeek() + 6) % 7][m][0] > now.hour())
-  //   {
-  //     l = m + 1;
-  //   }
-  //   else if (l == r)
-  //   {
-  //     Serial.println(12);
-  //     break;
-  //   }
-  //   else
-  //   {
-  //     r = m - 1;
-  //   } 
-  // }
-  // bzz_count = l;
+  for (int i = 0; i < 20; i++)
+  {
+    if(Schedule[d][i][0] > h or (Schedule[d][i][1] > m and Schedule[d][i][0] == h)){
+      na = i;
+      Serial.print(bzz_count);
+      break;
+    }
+  }
+  return na;
+}
+bool schedule_write()
+{
+  unsigned long data;
+  int l = 1;
+  for (int i = 0; i < 7; i++)
+  {
+    for (int j = 0; j < 20; j++)
+    {
+      data = Schedule[i][j][0] * 10000 + Schedule[i][j][1] * 100 + Schedule[i][j][2] * 10 + Schedule[i][j][3];
+      EEPROM.put(l, data);
+      if (data != 0)
+      {
+        Serial.println(data);
+      }
+      l += 4;
+    }
+  }
+  return true;
 }
