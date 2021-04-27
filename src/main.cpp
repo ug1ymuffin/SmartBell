@@ -19,9 +19,9 @@ bool button_locked = true;
 int bzzz_amount = 0;
 
 //timers
-unsigned long bzz_check_period_std = (long)100; //Ringing waiting period lenght
+unsigned long bzz_check_period_std = 100; //Ringing waiting period lenght
 unsigned long bzz_check_period = bzz_check_period_std;
-int btn_check_period = 1000; //Wait period for button and Blutooth
+unsigned btn_check_period = 1000; //Wait period for button and Blutooth
 unsigned long display_update = 1000;
 unsigned long display_blink_period = 100;
 unsigned long button_check_interval = 1000;
@@ -35,18 +35,18 @@ unsigned long ring_timer = millis();
 unsigned long bzzz_lenght = 0;
 
 //Functions used in program
-void scheduleRead();
-int nearest_alarm(int d, int h, int m);
-bool schedule_write();
-void schedule_serial_input();
-void button_check();
-bool blinking(int LED, bool led_pos, unsigned long *blinking_timer);
-void bzzz_mode();
-void display_digits(int now_hours, int now_minutes, int closest_ring_hours, int closest_ring_minutes);
-void hard_reset();
-void display_button_push(int count);
-void animation();
-void bluetooth_translating();
+void scheduleRead(); //To read schedule from EEPROM after turning on
+int nearest_alarm(int d, int h, int m); //to define order number of nearest ring
+bool schedule_write(); // To write schedule in EEPROM 
+void schedule_serial_input(); // Stupid method of inserting schedule into device, UI - овно
+void button_check(); // Checking for pressed button
+bool blinking(int LED, bool led_pos, unsigned long *blinking_timer); //Blinking used for showing that device is alive and for some special functions
+void bzzz_mode(); // Checking if it's time to ring and ringing 
+void display_digits(int now_hours, int now_minutes, int closest_ring_hours, int closest_ring_minutes); // Displaying data(nearest alarm + current time)
+void hard_reset(); //Deleting shedule from everywhere
+void display_button_push(int count); //Showing time(sec) button was pressed
+void animation(); //beautiful animation
+void bluetooth_translating(); //receiving data from phone
 
 //values for devices
 
@@ -74,64 +74,61 @@ int ring_relay = 4;
 
 void setup()
 {
-  DateTime now = rtc.now();
-  bzz_count = nearest_alarm((now.dayOfTheWeek() + 6) % 7, now.hour(), now.minute());
-  Serial.begin(9600);
-  btSerial.begin(9600);
-  Serial.setTimeout(10000);
-  Wire.begin();
-  scheduleRead();
-  lc.shutdown(0, false);
-  lc.setIntensity(0, 5);
-  lc.clearDisplay(0);
-  pinMode(button, INPUT);
-  pinMode(ring_relay, OUTPUT);
-  pinMode(LED_GREEN, OUTPUT);
-  pinMode(LED_RED, OUTPUT);
-  // Rewriting again
+  DateTime now = rtc.now(); // rtc set
+  bzz_count = nearest_alarm((now.dayOfTheWeek() + 6) % 7, now.hour(), now.minute()); //defining nearst alarm to ring
+  Serial.begin(9600); // Serial-computer
+  btSerial.begin(9600); // Serial-phone
+  Serial.setTimeout(10000); //Special setting for serial inputting schedule
+  Wire.begin(); // i2c
+  scheduleRead(); //initial read of schedule
+  lc.shutdown(0, false); //display 
+  lc.setIntensity(0, 5); //display
+  lc.clearDisplay(0); //display
+  pinMode(button, INPUT); //button
+  pinMode(ring_relay, OUTPUT); //relay
+  pinMode(LED_GREEN, OUTPUT); //led green
+  pinMode(LED_RED, OUTPUT); //led red
 }
 //Main loop. Responsible for bell rings.
 void loop()
 {
+  //defining current time:
   DateTime now = rtc.now();
-  //Whole main loop is full of errors, because new library
-  //Some functions be like afsgshth wareehtr
-  //Wait for lesson_check_period
-
-  int cur_alarm_hour = Schedule[(now.dayOfTheWeek() + 6) % 7][bzz_count][0];
+  int cur_alarm_hour = Schedule[(now.dayOfTheWeek() + 6) % 7][bzz_count][0];  
   int cur_alarm_minute = Schedule[(now.dayOfTheWeek() + 6) % 7][bzz_count][1];
+
+  //waiting for an hour of nearest ring with check interval of 5 min
   if (now.hour() == cur_alarm_hour)
   {
-    bzz_check_period = 1000;
+    bzz_check_period = 1000; //changing check interval to 1 min
     if (now.minute() == cur_alarm_minute)
     {
-      bzzz_amount = Schedule[(now.dayOfTheWeek() + 6) % 7][bzz_count][2] * 2;
+      bzzz_amount = Schedule[(now.dayOfTheWeek() + 6) % 7][bzz_count][2] * 2; //setting special params for alg of ringing 
       bzzz_lenght = Schedule[(now.dayOfTheWeek() + 6) % 7][bzz_count][3];
-      Serial.print(bzzz_amount);
-      Serial.print(bzzz_lenght);
       ring_idle = false;
       EEPROM.put(0, bzz_count);
       bzz_check_period = bzz_check_period_std;
+
     }
   }
 
-  button_check();
-  bzzz_mode();
+  button_check(); //checking if button is pressed and calculating time that it was pressed
+  bzzz_mode(); //due to not stopping full device algoritm checks if it's time to change position of relay in the background 
   if (button_pressed)
   {
-    led_red_pos = blinking(LED_RED, led_red_pos, &blink_timer);
+    led_red_pos = blinking(LED_RED, led_red_pos, &blink_timer); //special blink when button is pressed 
   }
   else
   {
-    led_green_pos = blinking(LED_GREEN, led_green_pos, &blink_timer);
+    led_green_pos = blinking(LED_GREEN, led_green_pos, &blink_timer); //regular blink
   }
-  if ((millis() - timer_three >= display_update) and !button_pressed and ring_idle)
+  if ((millis() - timer_three >= display_update) and !button_pressed and ring_idle) //special limits because we don't want display to refresh while showing animation  
   {
 
-    display_digits(now.hour(), now.minute(), cur_alarm_hour, cur_alarm_minute);
-    timer_three = millis();
+    display_digits(now.hour(), now.minute(), cur_alarm_hour, cur_alarm_minute); //sending data to show 
+    timer_three = millis(); //renewing timer for diplay(without timer whole display blink)
   }
-  bzz_count = nearest_alarm((now.dayOfTheWeek() + 6) % 7, now.hour(), now.minute());
+  bzz_count = nearest_alarm((now.dayOfTheWeek() + 6) % 7, now.hour(), now.minute()); //another check for order number of nearest ring
 }
 
 void scheduleRead()
@@ -182,33 +179,36 @@ void button_check()
     {
       if (button_pressed)
       {
-        switch (btn_time)
+        switch (btn_time) //different cases for different time of pressing button
         {
         default:
           break;
         case 1:
+        //giving one short ring
           ring_idle = false;
           bzzz_lenght = 1;
           bzzz_amount = 2;
           break;
 
         case 2:
+        //giving two medium rings
           ring_idle = false;
-          bzzz_amount = 4;
           bzzz_lenght = 2;
+          bzzz_amount = 4;
           break;
         case 4:
+        //startng protocol of receiving data 
           bluetooth_translating();
           break;
         case 6:
+          //full reset protocol
           hard_reset();
-          scheduleRead();
           break;
         }
-        digitalWrite(LED_RED, LOW);
+        digitalWrite(LED_RED, LOW); //reseting "button" led (red one)
         led_red_pos = LOW;
       }
-      btn_time = 0;
+      btn_time = 0; //reseting time of pressed button
       button_pressed = false;
     }
   }
@@ -231,7 +231,8 @@ void bzzz_mode()
   // ringing_display();
   if (bzzz_amount > 0)
   {
-    button_locked = true;
+    button_locked = true; //blocking button, it's impossible to push button while ringing(so impossible to call another ring)
+    ring_idle = false; //blocking display to show animation
     animation();
     if ((millis() - ring_timer > bzzz_lenght * 1000 * (bzzz_amount % 2) + ((bzzz_amount + 1) % 2) * 1000) and !ring_idle)
     {
@@ -244,13 +245,15 @@ void bzzz_mode()
   }
   else
   {
-    button_locked = false;
-    ring_idle = true;
+    button_locked = false; //unblocking button
+    ring_idle = true; //unblocking  display refresh 
   }
 }
 
 void display_digits(int now_hours, int now_mins, int closest_ring_hours, int closest_ring_minutes)
 {
+  //spagetti! Order of digits on display is made of them!
+  //setting data on display
   lc.clearDisplay(0);
   lc.setDigit(0, 3, now_hours / 10, false);
   lc.setDigit(0, 2, now_hours % 10, true);
@@ -264,6 +267,7 @@ void display_digits(int now_hours, int now_mins, int closest_ring_hours, int clo
 
 void display_button_push(int count)
 {
+  //showing time button pressed 
   lc.clearDisplay(0);
   lc.setDigit(0, 0, count, false);
 }
@@ -300,10 +304,13 @@ void hard_reset()
       l += 4;
     }
   }
+  scheduleRead();
 }
 
 void schedule_serial_input()
-{
+{ 
+  //setting schedule directly to the EEPROM 
+  //dont even try to use it. At least now
   int eeprom_count = 1;
   for (int i = 0; i < 7; i++)
   {
@@ -343,6 +350,7 @@ void schedule_serial_input()
       }
     }
   }
+  //reading set schedule from EEPROM 
   scheduleRead();
 }
 
@@ -359,35 +367,30 @@ void bluetooth_translating()
     blinking(LED_RED, led_red_pos, &blink_timer);
     if (btSerial.available())
     {
-      data = btSerial.read();
+      data = btSerial.read(); //received data 
       if (data != 0)
       {
-        switch (data - 1)
+        switch (data - 1) //"-1" is kind of encryption
         {
-        case 111:
+        case 111: //swithching param of currently setting ring
           k++;
           break;
-        case 222:
-          Serial.print(Schedule[i][j][0]);
-          Serial.print(Schedule[i][j][1]);
-          Serial.print(Schedule[i][j][2]);
-          Serial.print(Schedule[i][j][3]);
-          Serial.println();
+        case 222: //skipping to next alarm in current day
           j++;
           k = 0;
           break;
-        case 33:
+        case 33: //skipping to the next day
           i++;
           j = 0;
           k = 0;
           break;
         default:
-          Schedule[i][j][k] = data - 1;
+          Schedule[i][j][k] = data - 1; //writing data into cell 
         }
       }
     }
   }
-  schedule_write();
+  schedule_write(); //writing set shedule into the EEPROM
 }
 int nearest_alarm(int d, int h, int m)
 {
